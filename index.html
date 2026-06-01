@@ -534,8 +534,7 @@
   }
 
   function init(api) {
-    console.log('API:', api);
-    if (!api) alert('API GEOTAB NÃO DISPONÍVEL');
+    console.log('API recebida:', api);
     try {
       hideLoading();
       renderApp();
@@ -562,18 +561,19 @@
         clearTimeout(timeoutTimer);
         console.log('DeviceStatusInfo result:', result);
         if (result && result.length > 0) {
+          console.log('DeviceStatusInfo[0]:', JSON.stringify(result[0], null, 2));
           processDevices(result
-            .filter(function(v) { return v.Latitude && v.Longitude; })
+            .filter(function(v) { return v.latitude && v.longitude; })
             .map(function(v) {
-              var dias = v.DateTime ? Math.floor((Date.now() - new Date(v.DateTime)) / 86400000) : -1;
+              var dias = v.dateTime ? Math.floor((Date.now() - new Date(v.dateTime)) / 86400000) : -1;
               return {
-                nome: v.Device ? v.Device.name : '',
-                placa: v.Device ? v.Device.licensePlate : '',
-                lat: Number(v.Latitude),
-                lng: Number(v.Longitude),
-                ultimoGps: v.DateTime ? new Date(v.DateTime) : null,
+                nome: v.device ? v.device.name : '',
+                placa: v.device ? v.device.licensePlate : '',
+                lat: Number(v.latitude),
+                lng: Number(v.longitude),
+                ultimoGps: v.dateTime ? new Date(v.dateTime) : null,
                 diasSemSinal: dias,
-                online: v.IsDeviceCommunicating
+                online: v.isDeviceCommunicating
               };
             }));
         } else {
@@ -615,21 +615,8 @@
   geotab.addin.operadoras = function() {
     return {
       initialize: function(api, state, callback) {
-        alert('INITIALIZE CHAMADO');
-        console.log('initialize api:', api);
-        if (api) {
-          api.call('Get', { typeName: 'Device' }, function(result) {
-            alert('Devices encontrados: ' + result.length);
-            console.log('Devices:', result);
-            init(api);
-          }, function(error) {
-            alert('Erro Device: ' + JSON.stringify(error));
-            console.error(error);
-            init(api);
-          });
-        } else {
-          init(api);
-        }
+        console.log('initialize chamado, api:', api);
+        init(api);
         if (callback) callback();
       },
       focus: function() {
