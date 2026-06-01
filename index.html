@@ -617,7 +617,19 @@
       initialize: function(api, state, callback) {
         alert('INITIALIZE CHAMADO');
         console.log('initialize api:', api);
-        init(api);
+        if (api) {
+          api.call('Get', { typeName: 'Device' }, function(result) {
+            alert('Devices encontrados: ' + result.length);
+            console.log('Devices:', result);
+            init(api);
+          }, function(error) {
+            alert('Erro Device: ' + JSON.stringify(error));
+            console.error(error);
+            init(api);
+          });
+        } else {
+          init(api);
+        }
         if (callback) callback();
       },
       focus: function() {
