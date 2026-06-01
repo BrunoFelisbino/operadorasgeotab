@@ -549,17 +549,18 @@
         document.getElementById('geotab-status').innerHTML = '⚠️ A requisição ao Geotab está demorando. Verifique as permissões do add-in.';
       }, 15000);
 
-      api.call('Get', {
-        typeName: 'DeviceStatusInfo',
-        search: {
-          fromDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-          toDate: new Date().toISOString()
-        }
-      }, function(result) {
+      function processDevices(deviceList) {
+        veiculos = deviceList;
+        document.getElementById('geotab-status').innerHTML = '✅ ' + veiculos.length + ' veículos carregados do Geotab';
+        updateCounts();
+        renderAnalysis();
+      }
+
+      api.call('Get', { typeName: 'DeviceStatusInfo' }, function(result) {
         clearTimeout(timeoutTimer);
         console.log('DeviceStatusInfo result:', result);
         if (result && result.length > 0) {
-          veiculos = result
+          processDevices(result
             .filter(function(v) { return v.Latitude && v.Longitude; })
             .map(function(v) {
               var dias = v.DateTime ? Math.floor((Date.now() - new Date(v.DateTime)) / 86400000) : -1;
@@ -572,12 +573,32 @@
                 diasSemSinal: dias,
                 online: v.IsDeviceCommunicating
               };
-            });
-          document.getElementById('geotab-status').innerHTML = '✅ ' + veiculos.length + ' veículos carregados do Geotab';
-          updateCounts();
-          renderAnalysis();
+            }));
         } else {
-          document.getElementById('geotab-status').innerHTML = '⚠️ Nenhum dispositivo encontrado no Geotab';
+          document.getElementById('geotab-status').innerHTML = '⏳ DeviceStatusInfo vazio, tentando Device...';
+          api.call('Get', { typeName: 'Device' }, function(result2) {
+            console.log('Device result:', result2);
+            if (result2 && result2.length > 0) {
+              processDevices(result2
+                .filter(function(d) { return d.latitude && d.longitude; })
+                .map(function(d) {
+                  return {
+                    nome: d.name || d.serialNumber || '',
+                    placa: d.licensePlate || '',
+                    lat: Number(d.latitude),
+                    lng: Number(d.longitude),
+                    ultimoGps: d.dateTime ? new Date(d.dateTime) : null,
+                    diasSemSinal: d.dateTime ? Math.floor((Date.now() - new Date(d.dateTime)) / 86400000) : -1,
+                    online: false
+                  };
+                }));
+            } else {
+              document.getElementById('geotab-status').innerHTML = '⚠️ Nenhum veículo encontrado no Geotab';
+            }
+          }, function(err2) {
+            clearTimeout(timeoutTimer);
+            document.getElementById('geotab-status').innerHTML = '❌ Device: ' + (err2 && err2.message ? err2.message : 'erro');
+          });
         }
       }, function(err) {
         clearTimeout(timeoutTimer);
