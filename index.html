@@ -104,6 +104,7 @@
   </style>
 </head>
 <body style="background:#0d1117;color:#e6edf3;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;min-height:100vh;padding:12px;">
+<script>document.documentElement.style.background='#0d1117';</script>
 
 <div id="app">
   <div id="loading" style="display:flex;align-items:center;justify-content:center;padding:40px;color:#8b949e;font-size:13px;gap:10px;">
@@ -144,6 +145,17 @@
   let antenas = [];
   let veiculos = [];
 
+  function saveAntenas() {
+    try { localStorage.setItem('operadoras_antenas', JSON.stringify(antenas)); } catch (e) {}
+  }
+  function loadAntenas() {
+    try {
+      var saved = localStorage.getItem('operadoras_antenas');
+      if (saved) { antenas = JSON.parse(saved); return true; }
+    } catch (e) {}
+    return false;
+  }
+
   function hideLoading() {
     const el = document.getElementById('loading');
     if (el) el.classList.add('loading-hidden');
@@ -160,6 +172,7 @@
           <span id="ant-filename" style="font-size:11px;color:#8b949e;margin-left:4px;">Nenhum</span>
         </label>
         <button class="secondary" id="btn-ant-backend">☁️ Carregar do servidor</button>
+        <button class="secondary" id="btn-clear-cache" style="font-size:11px;">🗑️ Limpar cache</button>
       </div>
 
       <div class="info-bar">
@@ -211,6 +224,12 @@
       uploadAntenas(e);
     });
     document.getElementById('btn-ant-backend').addEventListener('click', loadAntBackend);
+    document.getElementById('btn-clear-cache').addEventListener('click', function() {
+      localStorage.removeItem('operadoras_antenas');
+      antenas = [];
+      updateCounts();
+      setStatus('🗑️ Cache de antenas limpo', '');
+    });
   }
 
   function setStatus(msg, type) {
@@ -245,6 +264,7 @@
         endereco: [a.logradouro, a.bairro, a.mun, a.sigla_uf].filter(Boolean).join(', '),
       })).filter(a => !isNaN(a.lat) && !isNaN(a.lng));
       setStatus('✅ ' + antenas.length + ' antenas carregadas do servidor', 'success');
+      saveAntenas();
       updateCounts();
       renderAnalysis();
     } catch (e) {
@@ -279,6 +299,7 @@
           endereco: (r['Logradouro'] || '') + ', ' + (r['Bairro'] || '') + ' - ' + (r['MUN'] || '') + '/' + (r['SiglaUf'] || ''),
         })).filter(a => !isNaN(a.lat) && !isNaN(a.lng) && a.lat !== 0 && a.lng !== 0);
         el.textContent = '✅ ' + file.name + ' (' + antenas.length + ' antenas)';
+        saveAntenas();
         updateCounts();
         renderAnalysis();
         setStatus('✅ ' + antenas.length + ' antenas carregadas.', 'success');
@@ -535,6 +556,7 @@
 
   function init(api) {
     console.log('API recebida:', api);
+    if (loadAntenas()) console.log('Antenas carregadas do cache:', antenas.length);
     try {
       hideLoading();
       renderApp();
