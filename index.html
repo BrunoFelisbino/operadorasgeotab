@@ -14,91 +14,107 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #0d1117;
-      --card: rgba(22,27,34,0.9);
+      --bg: #0a0e14;
+      --card: rgba(16,22,30,0.92);
       --text: #e6edf3;
       --text-dim: #8b949e;
-      --border: rgba(48,54,61,0.6);
+      --text-muted: #484f58;
+      --border: rgba(48,54,61,0.5);
+      --border-hover: rgba(88,166,255,0.2);
       --accent: #58a6ff;
-      --accent-glow: #1f6feb;
+      --accent-glow: rgba(88,166,255,0.15);
+      --accent-gradient: linear-gradient(135deg, #58a6ff, #1f6feb);
       --success: #3fb950;
+      --success-glow: rgba(63,185,80,0.12);
       --warn: #d29922;
+      --warn-glow: rgba(210,153,34,0.12);
       --danger: #f85149;
-      --input-bg: #161b22;
+      --danger-glow: rgba(248,81,73,0.12);
+      --purple: #ab47bc;
+      --purple-glow: rgba(171,71,188,0.12);
+      --input-bg: #0d1117;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.2);
     }
     body {
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       background: var(--bg) !important;
       color: var(--text) !important;
       min-height: 100vh;
-      padding: 12px;
+      padding: 14px;
     }
-    h2 { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; }
-    h3 { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text); text-transform: uppercase; letter-spacing: 0.3px; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+    h2 { font-size: 15px; font-weight: 700; margin-bottom: 10px; background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: 0.3px; }
+    h3 { font-size: 12px; font-weight: 700; margin-bottom: 8px; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8; }
     .toolbar {
       display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
-      padding: 10px 12px; background: var(--card); border: 1px solid var(--border);
-      border-radius: 8px; margin-bottom: 12px;
+      padding: 10px 14px; background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); margin-bottom: 10px; box-shadow: var(--shadow);
     }
     .toolbar select, .toolbar input, .toolbar button {
-      height: 34px; border-radius: 6px; border: 1px solid var(--border);
-      font-family: inherit; font-size: 12px;
+      height: 32px; border-radius: 6px; border: 1px solid var(--border);
+      font-family: inherit; font-size: 11px;
     }
     .toolbar select, .toolbar input {
       background: var(--input-bg); color: var(--text); padding: 0 10px;
     }
     .toolbar select option { background: var(--input-bg); color: var(--text); }
     .toolbar button {
-      background: var(--accent-glow); color: #fff; font-weight: 600;
-      padding: 0 14px; cursor: pointer; border-color: var(--accent);
-      transition: opacity 0.2s; white-space: nowrap;
+      background: var(--accent-gradient); color: #fff; font-weight: 600;
+      padding: 0 14px; cursor: pointer; border: none;
+      transition: all 0.2s; white-space: nowrap;
     }
-    .toolbar button:hover { opacity: 0.85; }
-    .toolbar button.secondary { background: transparent; color: var(--text-dim); border-color: var(--border); }
-    .toolbar button.secondary:hover { color: var(--text); border-color: var(--accent); }
-    .toolbar button.danger { background: transparent; color: var(--danger); border-color: var(--danger); }
-    .toolbar button.danger:hover { background: rgba(248,81,73,0.1); }
+    .toolbar button:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(88,166,255,0.25); }
+    .toolbar button.secondary { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+    .toolbar button.secondary:hover { color: var(--text); border-color: var(--border-hover); transform: none; box-shadow: none; }
+    .toolbar button.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+    .toolbar button.danger:hover { background: var(--danger-glow); transform: none; box-shadow: none; }
     .toolbar label { font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 4px; }
     .status-msg {
-      padding: 8px 12px; border-radius: 6px; font-size: 12px; margin-bottom: 10px;
-      background: rgba(88,166,255,0.08); border: 1px solid rgba(88,166,255,0.15); color: var(--text);
+      padding: 8px 14px; border-radius: var(--radius); font-size: 12px; margin-bottom: 10px;
+      background: rgba(88,166,255,0.06); border: 1px solid rgba(88,166,255,0.12); color: var(--text);
     }
-    .status-msg.warn { background: rgba(210,153,34,0.1); border-color: rgba(210,153,34,0.3); color: var(--warn); }
-    .status-msg.error { background: rgba(248,81,73,0.1); border-color: rgba(248,81,73,0.3); color: var(--danger); }
-    .status-msg.success { background: rgba(63,185,80,0.1); border-color: rgba(63,185,80,0.3); color: var(--success); }
+    .status-msg.warn { background: var(--warn-glow); border-color: rgba(210,153,34,0.25); color: var(--warn); }
+    .status-msg.error { background: var(--danger-glow); border-color: rgba(248,81,73,0.25); color: var(--danger); }
+    .status-msg.success { background: var(--success-glow); border-color: rgba(63,185,80,0.25); color: var(--success); }
     .grid {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 12px;
     }
     .kpi {
-      padding: 12px; background: var(--card); border: 1px solid var(--border);
-      border-radius: 8px; text-align: center;
+      padding: 14px 10px; background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); text-align: center; box-shadow: var(--shadow);
     }
-    .kpi span { display: block; font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-    .kpi strong { font-size: 22px; font-weight: 800; }
+    .kpi span { display: block; font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+    .kpi strong { font-size: 24px; font-weight: 800; }
     .panel {
       background: var(--card); border: 1px solid var(--border);
-      border-radius: 8px; padding: 14px; margin-bottom: 12px;
+      border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; box-shadow: var(--shadow);
     }
     table { width: 100%; border-collapse: collapse; font-size: 11px; }
-    th { text-align: left; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.3px; font-size: 10px; padding: 8px 6px; border-bottom: 1px solid var(--border); background: rgba(48,54,61,0.3); }
-    td { padding: 6px; border-bottom: 1px solid rgba(48,54,61,0.3); color: var(--text-dim); vertical-align: middle; }
-    tr:hover td { background: rgba(88,166,255,0.04); }
-    #map-container { height: 350px; border-radius: 8px; border: 1px solid var(--border); overflow: hidden; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; }
-    .badge-ok { background: rgba(63,185,80,0.15); color: var(--success); }
-    .badge-warn { background: rgba(210,153,34,0.15); color: var(--warn); }
-    .badge-danger { background: rgba(248,81,73,0.15); color: var(--danger); }
-    .badge-info { background: rgba(88,166,255,0.15); color: var(--accent); }
+    th { text-align: left; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; font-size: 9px; padding: 8px 8px; border-bottom: 1px solid var(--border); background: rgba(48,54,61,0.2); }
+    td { padding: 7px 8px; border-bottom: 1px solid rgba(48,54,61,0.2); color: var(--text-dim); vertical-align: middle; }
+    tr:hover td { background: rgba(88,166,255,0.03); }
+    #map-container { height: 360px; border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2); }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+    .badge-ok { background: var(--success-glow); color: var(--success); }
+    .badge-warn { background: var(--warn-glow); color: var(--warn); }
+    .badge-danger { background: var(--danger-glow); color: var(--danger); }
+    .badge-info { background: var(--accent-glow); color: var(--accent); }
+    .badge-purple { background: var(--purple-glow); color: var(--purple); }
     .info-bar {
-      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
-      padding: 8px 12px; background: rgba(88,166,255,0.05); border: 1px solid var(--border); border-radius: 6px;
-      font-size: 12px; color: var(--text-dim); margin-bottom: 10px;
+      display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+      padding: 8px 14px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      font-size: 12px; color: var(--text-dim); margin-bottom: 10px; box-shadow: var(--shadow);
     }
     .info-bar strong { color: var(--text); }
     a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
     .flex { display: flex; gap: 12px; flex-wrap: wrap; }
     .flex-1 { flex: 1; min-width: 200px; }
+    .leaflet-container { background: #0d1117 !important; }
     @media (max-width: 768px) {
       body { padding: 8px; }
       .toolbar { flex-direction: column; }
@@ -449,7 +465,7 @@
 
     html += '<table><thead><tr><th>Veículo</th><th>Placa</th><th>5km</th><th>20km</th><th>Operadoras 5km</th><th>Recomendação</th></tr></thead><tbody>' +
       resultados.map(({ v, d5, d20, sugestao, operadoras, status }) => {
-        const badgeClass = status === 'ok' ? 'badge-ok' : (status === 'trocar_4g' ? 'badge-warn' : (status === 'reaproveitar_3g' ? 'badge-info' : (status === 'trocar_op' ? 'badge-warn' : 'badge-danger')));
+        const badgeClass = status === 'ok' ? 'badge-ok' : (status === 'trocar_4g' ? 'badge-warn' : (status === 'reaproveitar_3g' ? 'badge-purple' : (status === 'trocar_op' ? 'badge-warn' : 'badge-danger')));
         return '<tr onclick="window._selectVehicle(' + veiculos.indexOf(v) + ')" style="cursor:pointer;">' +
           '<td><strong>' + v.nome + '</strong></td>' +
           '<td>' + (v.placa || '—') + '</td>' +
