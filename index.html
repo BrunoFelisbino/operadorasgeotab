@@ -552,6 +552,8 @@
 
       function processDevices(deviceList) {
         veiculos = deviceList;
+        console.log('Veiculos processados:', veiculos.length);
+        if (veiculos.length > 0) console.log('Primeiro veiculo:', veiculos[0]);
         document.getElementById('geotab-status').innerHTML = '✅ ' + veiculos.length + ' veículos carregados do Geotab';
         updateCounts();
         renderAnalysis();
@@ -562,7 +564,7 @@
         console.log('DeviceStatusInfo result:', result);
         if (result && result.length > 0) {
           console.log('DeviceStatusInfo[0]:', JSON.stringify(result[0], null, 2));
-          var comGps = result.filter(function(v) { return v.latitude && v.longitude; });
+          var comGps = result.filter(function(v) { return v.latitude != null && v.longitude != null; });
           console.log('Com GPS:', comGps.length, 'de', result.length);
           processDevices(comGps
             .map(function(v) {
