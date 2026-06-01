@@ -562,13 +562,14 @@
         console.log('DeviceStatusInfo result:', result);
         if (result && result.length > 0) {
           console.log('DeviceStatusInfo[0]:', JSON.stringify(result[0], null, 2));
-          processDevices(result
-            .filter(function(v) { return v.latitude && v.longitude; })
+          var comGps = result.filter(function(v) { return v.latitude && v.longitude; });
+          console.log('Com GPS:', comGps.length, 'de', result.length);
+          processDevices(comGps
             .map(function(v) {
               var dias = v.dateTime ? Math.floor((Date.now() - new Date(v.dateTime)) / 86400000) : -1;
               return {
-                nome: v.device ? v.device.name : '',
-                placa: v.device ? v.device.licensePlate : '',
+                nome: v.device ? (v.device.name || v.device.id) : '',
+                placa: v.device ? (v.device.licensePlate || '') : '',
                 lat: Number(v.latitude),
                 lng: Number(v.longitude),
                 ultimoGps: v.dateTime ? new Date(v.dateTime) : null,
