@@ -593,19 +593,50 @@
         renderAnalysis();
       }
 
-      api.call('Get', { typeName: 'DeviceStatusInfo' }, function(result) {
-        clearTimeout(timeoutTimer);
-        console.log('DeviceStatusInfo result:', result);
-        if (result && result.length > 0) {
-          console.log('DeviceStatusInfo[0]:', JSON.stringify(result[0], null, 2));
-          var comGps = result.filter(function(v) { return v.latitude != null && v.longitude != null; });
-          console.log('Com GPS:', comGps.length, 'de', result.length);
-          processDevices(comGps
-            .map(function(v) {
+      var deviceMap = {};
+      api.call('Get', { typeName: 'Device' }, function(devices) {
+        devices.forEach(function(d) {
+          deviceMap[d.id] = { name: d.name, licensePlate: d.licensePlate || d.name };
+        });
+        api.call('Get', { typeName: 'DeviceStatusInfo' }, function(result) {
+          clearTimeout(timeoutTimer);
+          console.log('DeviceStatusInfo result:', result);
+          if (result && result.length > 0) {
+            console.log('DeviceStatusInfo[0]:', JSON.stringify(result[0], null, 2));
+            var comGps = result.filter(function(v) { return v.latitude != null && v.longitude != null; });
+            console.log('Com GPS:', comGps.length, 'de', result.length);
+            processDevices(comGps
+              .map(function(v) {
+                var info = v.device ? deviceMap[v.device.id] : null;
+                var dias = v.dateTime ? Math.floor((Date.now() - new Date(v.dateTime)) / 86400000) : -1;
+                return {
+                  nome: info ? (info.name || v.device.id) : (v.device ? v.device.id : ''),
+                  placa: info ? (info.licensePlate || info.name || v.device.id) : (v.device ? v.device.id : ''),
+                  lat: Number(v.latitude),
+                  lng: Number(v.longitude),
+                  ultimoGps: v.dateTime ? new Date(v.dateTime) : null,
+                  diasSemSinal: dias,
+                  online: v.isDeviceCommunicating
+                };
+              }));
+          } else {
+            document.getElementById('geotab-status').innerHTML = '⚠️ Nenhum veículo encontrado no Geotab';
+          }
+        }, function(err) {
+          clearTimeout(timeoutTimer);
+          document.getElementById('geotab-status').innerHTML = '❌ Erro Geotab: ' + (err && err.message ? err.message : 'erro');
+        });
+      }, function(errDev) {
+        document.getElementById('geotab-status').innerHTML = '⚠️ Dispositivos não carregados, tentando só GPS...';
+        api.call('Get', { typeName: 'DeviceStatusInfo' }, function(result) {
+          clearTimeout(timeoutTimer);
+          if (result && result.length > 0) {
+            var comGps = result.filter(function(v) { return v.latitude != null && v.longitude != null; });
+            processDevices(comGps.map(function(v) {
               var dias = v.dateTime ? Math.floor((Date.now() - new Date(v.dateTime)) / 86400000) : -1;
               return {
-                nome: v.device ? (v.device.name || v.device.id) : '',
-                placa: v.device ? (v.device.licensePlate || '') : '',
+                nome: v.device ? v.device.id : '',
+                placa: v.device ? v.device.id : '',
                 lat: Number(v.latitude),
                 lng: Number(v.longitude),
                 ultimoGps: v.dateTime ? new Date(v.dateTime) : null,
@@ -613,36 +644,13 @@
                 online: v.isDeviceCommunicating
               };
             }));
-        } else {
-          document.getElementById('geotab-status').innerHTML = '⏳ DeviceStatusInfo vazio, tentando Device...';
-          api.call('Get', { typeName: 'Device' }, function(result2) {
-            console.log('Device result:', result2);
-            if (result2 && result2.length > 0) {
-              processDevices(result2
-                .filter(function(d) { return d.latitude && d.longitude; })
-                .map(function(d) {
-                  return {
-                    nome: d.name || d.serialNumber || '',
-                    placa: d.licensePlate || '',
-                    lat: Number(d.latitude),
-                    lng: Number(d.longitude),
-                    ultimoGps: d.dateTime ? new Date(d.dateTime) : null,
-                    diasSemSinal: d.dateTime ? Math.floor((Date.now() - new Date(d.dateTime)) / 86400000) : -1,
-                    online: false
-                  };
-                }));
-            } else {
-              document.getElementById('geotab-status').innerHTML = '⚠️ Nenhum veículo encontrado no Geotab';
-            }
-          }, function(err2) {
-            clearTimeout(timeoutTimer);
-            document.getElementById('geotab-status').innerHTML = '❌ Device: ' + (err2 && err2.message ? err2.message : 'erro');
-          });
-        }
-      }, function(err) {
-        clearTimeout(timeoutTimer);
-        var msg = err && err.message ? err.message : 'erro desconhecido';
-        document.getElementById('geotab-status').innerHTML = '❌ Erro Geotab: ' + msg;
+          } else {
+            document.getElementById('geotab-status').innerHTML = '⚠️ Nenhum veículo encontrado no Geotab';
+          }
+        }, function(err2) {
+          clearTimeout(timeoutTimer);
+          document.getElementById('geotab-status').innerHTML = '❌ Erro Geotab: ' + (err2 && err2.message ? err2.message : 'erro');
+        });
       });
     } else {
       document.getElementById('geotab-status').innerHTML = '🔌 Add-in não conectado ao Geotab';
