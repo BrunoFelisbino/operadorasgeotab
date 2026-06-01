@@ -305,7 +305,11 @@
 
   function renderAnalysis() {
     document.getElementById('kpi-area').style.display = 'block';
-    if (veiculos.length === 0 || antenas.length === 0) return;
+    if (antenas.length === 0) return;
+    if (veiculos.length === 0) {
+      document.getElementById('analise-frota').innerHTML = '<div style="padding:20px;text-align:center;color:#8b949e;">Nenhum veículo encontrado no Geotab.</div>';
+      return;
+    }
 
     const resultados = veiculos.map(v => {
       const res = antenas.map(a => ({ ...a, distanciaKm: haversine(v.lat, v.lng, a.lat, a.lng) }));
@@ -553,6 +557,7 @@
         }
       }, function(result) {
         clearTimeout(timeoutTimer);
+        console.log('DeviceStatusInfo result:', result);
         if (result && result.length > 0) {
           veiculos = result
             .filter(function(v) { return v.Latitude && v.Longitude; })
