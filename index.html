@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Operadoras — Geotab Add-In</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -103,8 +106,17 @@
     }
   </style>
 </head>
-<body style="background:#0d1117;color:#e6edf3;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;min-height:100vh;padding:12px;">
-<script>document.documentElement.style.background='#0d1117';</script>
+<body>
+<script>
+(function(){
+  var bg = '#0d1117';
+  document.documentElement.style.cssText = 'background:'+bg+'!important';
+  document.body.style.cssText = 'background:'+bg+'!important;color:#e6edf3;font-family:Segoe UI,system-ui,sans-serif;min-height:100vh;padding:12px;';
+  var s = document.createElement('style');
+  s.textContent = 'html,body{background:'+bg+'!important}';
+  document.head.appendChild(s);
+})();
+</script>
 
 <div id="app">
   <div id="loading" style="display:flex;align-items:center;justify-content:center;padding:40px;color:#8b949e;font-size:13px;gap:10px;">
