@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Operadoras — Geotab Add-In</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117;
+      --card: rgba(22,27,34,0.9);
+      --text: #e6edf3;
+      --text-dim: #8b949e;
+      --border: rgba(48,54,61,0.6);
+      --accent: #58a6ff;
+      --accent-glow: #1f6feb;
+      --success: #3fb950;
+      --warn: #d29922;
+      --danger: #f85149;
+      --input-bg: #161b22;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 12px;
+    }
+    h2 { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; }
+    h3 { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text); text-transform: uppercase; letter-spacing: 0.3px; }
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding: 10px 12px; background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; margin-bottom: 12px;
+    }
+    .toolbar select, .toolbar input, .toolbar button {
+      height: 34px; border-radius: 6px; border: 1px solid var(--border);
+      font-family: inherit; font-size: 12px;
+    }
+    .toolbar select, .toolbar input {
+      background: var(--input-bg); color: var(--text); padding: 0 10px;
+    }
+    .toolbar select option { background: var(--input-bg); color: var(--text); }
+    .toolbar button {
+      background: var(--accent-glow); color: #fff; font-weight: 600;
+      padding: 0 14px; cursor: pointer; border-color: var(--accent);
+      transition: opacity 0.2s; white-space: nowrap;
+    }
+    .toolbar button:hover { opacity: 0.85; }
+    .toolbar button.secondary { background: transparent; color: var(--text-dim); border-color: var(--border); }
+    .toolbar button.secondary:hover { color: var(--text); border-color: var(--accent); }
+    .toolbar button.danger { background: transparent; color: var(--danger); border-color: var(--danger); }
+    .toolbar button.danger:hover { background: rgba(248,81,73,0.1); }
+    .toolbar label { font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 4px; }
+    .status-msg {
+      padding: 8px 12px; border-radius: 6px; font-size: 12px; margin-bottom: 10px;
+      background: rgba(88,166,255,0.08); border: 1px solid rgba(88,166,255,0.15); color: var(--text);
+    }
+    .status-msg.warn { background: rgba(210,153,34,0.1); border-color: rgba(210,153,34,0.3); color: var(--warn); }
+    .status-msg.error { background: rgba(248,81,73,0.1); border-color: rgba(248,81,73,0.3); color: var(--danger); }
+    .status-msg.success { background: rgba(63,185,80,0.1); border-color: rgba(63,185,80,0.3); color: var(--success); }
+    .grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 12px;
+    }
+    .kpi {
+      padding: 12px; background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; text-align: center;
+    }
+    .kpi span { display: block; font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .kpi strong { font-size: 22px; font-weight: 800; }
+    .panel {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px; margin-bottom: 12px;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th { text-align: left; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.3px; font-size: 10px; padding: 8px 6px; border-bottom: 1px solid var(--border); background: rgba(48,54,61,0.3); }
+    td { padding: 6px; border-bottom: 1px solid rgba(48,54,61,0.3); color: var(--text-dim); vertical-align: middle; }
+    tr:hover td { background: rgba(88,166,255,0.04); }
+    #map-container { height: 350px; border-radius: 8px; border: 1px solid var(--border); overflow: hidden; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+    .badge-ok { background: rgba(63,185,80,0.15); color: var(--success); }
+    .badge-warn { background: rgba(210,153,34,0.15); color: var(--warn); }
+    .badge-danger { background: rgba(248,81,73,0.15); color: var(--danger); }
+    .badge-info { background: rgba(88,166,255,0.15); color: var(--accent); }
+    .info-bar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding: 8px 12px; background: rgba(88,166,255,0.05); border: 1px solid var(--border); border-radius: 6px;
+      font-size: 12px; color: var(--text-dim); margin-bottom: 10px;
+    }
+    .info-bar strong { color: var(--text); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .flex { display: flex; gap: 12px; flex-wrap: wrap; }
+    .flex-1 { flex: 1; min-width: 200px; }
+    @media (max-width: 768px) {
+      body { padding: 8px; }
+      .toolbar { flex-direction: column; }
+      .toolbar select, .toolbar input { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <div id="loading" style="display:flex;align-items:center;justify-content:center;padding:40px;color:#8b949e;font-size:13px;gap:10px;">
+    <div class="spinner" style="width:24px;height:24px;border-radius:50%;border:3px solid #30363d;border-top-color:#58a6ff;animation:spin 0.8s linear infinite;"></div>
+    <span>Conectando ao Geotab...</span>
+  </div>
+</div>
+
+<style>
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-hidden { display: none !important; }
+</style>
+
+<script>
+(function() {
+  'use strict';
+
+  const API_BASE = 'https://mapa-tecnicos-api.onrender.com';
+
+  const ehVivo = (op) => /vivo|telef[oô]nica/i.test(op);
+  const eh3g = (t) => /3g|hspa|umts|wcdma/i.test(t);
+  const eh4g = (t) => /4g|lte/i.test(t);
+
+  const haversine = (lat1, lng1, lat2, lng2) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  };
+
+  let map = null;
+  let markersLayer = null;
+  let circle5 = null;
+  let circle20 = null;
+  let centerMarker = null;
+
+  let antenas = [];
+  let veiculos = [];
+
+  function hideLoading() {
+    const el = document.getElementById('loading');
+    if (el) el.classList.add('loading-hidden');
+  }
+
+  function renderApp() {
+    const app = document.getElementById('app');
+    if (!app) return;
+    app.innerHTML = `
+      <div class="toolbar">
+        <label>📄 Antenas:
+          <input type="file" id="ant-upload" accept=".xlsx,.xls,.csv" style="display:none"/>
+          <button class="secondary" id="btn-ant-upload" style="font-size:11px;">📂 Importar planilha</button>
+          <span id="ant-filename" style="font-size:11px;color:#8b949e;margin-left:4px;">Nenhum</span>
+        </label>
+        <button class="secondary" id="btn-ant-backend">☁️ Carregar do servidor</button>
+      </div>
+
+      <div class="info-bar">
+        <span id="geotab-status">🔌 Conectando ao Geotab...</span>
+        <span id="ant-count">📡 Antenas: 0</span>
+        <span id="veic-count">🚛 Veículos: 0</span>
+      </div>
+
+      <div id="kpi-area" style="display:none;">
+        <div class="grid" id="kpi-grid"></div>
+        <div id="status-msg" class="status-msg" hidden></div>
+
+        <div class="flex">
+          <div class="flex-1">
+            <div class="panel">
+              <h3>Veículo</h3>
+              <div id="veic-detalhes" style="font-size:12px;color:#8b949e;">Nenhum veículo selecionado</div>
+            </div>
+          </div>
+          <div class="flex-1">
+            <div class="panel">
+              <h3>Viabilidade</h3>
+              <div id="viabilidade" style="font-size:12px;color:#8b949e;">Selecione um veículo para ver a análise</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Operadoras no raio 20 km</h3>
+          <div id="tabela-operadoras"></div>
+        </div>
+
+        <div class="panel">
+          <h3>Análise de frota</h3>
+          <div id="analise-frota"></div>
+        </div>
+
+        <div class="panel">
+          <h3>Mapa</h3>
+          <div id="map-container"></div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btn-ant-upload').addEventListener('click', () => {
+      document.getElementById('ant-upload').click();
+    });
+    document.getElementById('ant-upload').addEventListener('change', (e) => {
+      uploadAntenas(e);
+    });
+    document.getElementById('btn-ant-backend').addEventListener('click', loadAntBackend);
+  }
+
+  function setStatus(msg, type) {
+    const el = document.getElementById('status-msg');
+    if (!el) return;
+    el.hidden = false;
+    el.className = 'status-msg ' + (type || '');
+    el.innerHTML = msg;
+  }
+
+  function updateCounts() {
+    const antEl = document.getElementById('ant-count');
+    const veicEl = document.getElementById('veic-count');
+    if (antEl) antEl.innerHTML = '📡 Antenas: ' + antenas.length;
+    if (veicEl) veicEl.innerHTML = '🚛 Veículos: ' + veiculos.length;
+  }
+
+  async function loadAntBackend() {
+    try {
+      const resp = await fetch(API_BASE + '/api/antennas');
+      if (!resp.ok) throw new Error('Servidor indisponível');
+      const json = await resp.json();
+      if (!json.data || json.data.length === 0) throw new Error('Nenhuma antena no servidor');
+      antenas = json.data.map(a => ({
+        id: a.id,
+        nome: a.numero_estacao || 'Antena ' + a.id,
+        operadora: a.operadora || 'N/I',
+        tecnologia: a.tecs || 'N/I',
+        faixa: a.faixa || '',
+        lat: parseFloat(a.latitude),
+        lng: parseFloat(a.longitude),
+        endereco: [a.logradouro, a.bairro, a.mun, a.sigla_uf].filter(Boolean).join(', '),
+      })).filter(a => !isNaN(a.lat) && !isNaN(a.lng));
+      setStatus('✅ ' + antenas.length + ' antenas carregadas do servidor', 'success');
+      updateCounts();
+      renderAnalysis();
+    } catch (e) {
+      setStatus('❌ ' + e.message, 'error');
+    }
+  }
+
+  function uploadAntenas(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const el = document.getElementById('ant-filename');
+    el.textContent = '⏳ ' + file.name + '...';
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        let rows;
+        if (file.name.endsWith('.csv')) {
+          rows = parseCSV(ev.target.result);
+        } else {
+          const wb = XLSX.read(ev.target.result, { type: 'array' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          rows = XLSX.utils.sheet_to_json(ws);
+        }
+        antenas = rows.map((r, i) => ({
+          id: i + 1,
+          nome: r['Número Estação'] || r['Nome'] || r['name'] || 'Antena ' + (i+1),
+          operadora: r['Operadora'] || r['operadora'] || 'N/I',
+          tecnologia: r['Tecs'] || r['Tecnologia'] || r['tecnologia'] || 'N/I',
+          faixa: r['Faixa'] || '',
+          lat: parseFloat(r['Latitude'] || r['lat'] || 0),
+          lng: parseFloat(r['Longitude'] || r['lng'] || 0),
+          endereco: (r['Logradouro'] || '') + ', ' + (r['Bairro'] || '') + ' - ' + (r['MUN'] || '') + '/' + (r['SiglaUf'] || ''),
+        })).filter(a => !isNaN(a.lat) && !isNaN(a.lng) && a.lat !== 0 && a.lng !== 0);
+        el.textContent = '✅ ' + file.name + ' (' + antenas.length + ' antenas)';
+        updateCounts();
+        renderAnalysis();
+        setStatus('✅ ' + antenas.length + ' antenas carregadas.', 'success');
+      } catch (err) {
+        el.textContent = '❌ Erro ao ler ' + file.name;
+        setStatus('❌ Erro: ' + err.message, 'error');
+      }
+    };
+    if (file.name.endsWith('.csv')) reader.readAsText(file);
+    else reader.readAsArrayBuffer(file);
+  }
+
+  function parseCSV(text) {
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(/[,;]/).map(h => h.trim().replace(/^["']|["']$/g, ''));
+    return lines.slice(1).map(line => {
+      const vals = line.split(/[,;]/).map(v => v.trim().replace(/^["']|["']$/g, ''));
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
+      return obj;
+    }).filter(r => r[headers[0]]);
+  }
+
+  function renderAnalysis() {
+    document.getElementById('kpi-area').style.display = 'block';
+    if (veiculos.length === 0 || antenas.length === 0) return;
+
+    const resultados = veiculos.map(v => {
+      const res = antenas.map(a => ({ ...a, distanciaKm: haversine(v.lat, v.lng, a.lat, a.lng) }));
+      const d5 = res.filter(a => a.distanciaKm <= 5).length;
+      const d20 = res.filter(a => a.distanciaKm <= 20).length;
+
+      const ops5km = {};
+      res.forEach(a => { if (a.distanciaKm <= 5) { if (!ops5km[a.operadora]) ops5km[a.operadora] = new Set(); ops5km[a.operadora].add(a.tecnologia); } });
+
+      const temVivo3g = Object.entries(ops5km).some(([op, tecs]) => ehVivo(op) && [...tecs].some(eh3g));
+      const temVivo4g = Object.entries(ops5km).some(([op, tecs]) => ehVivo(op) && [...tecs].some(eh4g));
+      const temOutra3g = Object.entries(ops5km).some(([op, tecs]) => !ehVivo(op) && [...tecs].some(eh3g));
+
+      let sugestao, operadoras, status;
+      if (temVivo3g) {
+        sugestao = '✅ Vivo 3G'; status = 'ok';
+        const chaveVivo = Object.keys(ops5km).find(k => ehVivo(k));
+        operadoras = chaveVivo ? [...ops5km[chaveVivo]].join('/') : 'Vivo 3G';
+      } else if (Object.keys(ops5km).length === 0) {
+        sugestao = '❌ Sem cobertura'; operadoras = 'Nenhuma operadora no raio de 5 km'; status = 'sem_cobertura';
+      } else if (temOutra3g) {
+        sugestao = '🤝 Reaprov. 3G';
+        operadoras = Object.entries(ops5km).filter(([op, tecs]) => !ehVivo(op) && [...tecs].some(eh3g)).map(([op, tecs]) => op + ' (' + [...tecs].join('/') + ')').join(', ');
+        status = 'reaproveitar_3g';
+      } else if (temVivo4g) {
+        sugestao = '📶 Trocar 4G'; operadoras = 'Vivo 4G disponível'; status = 'trocar_4g';
+      } else {
+        sugestao = '🔄 Trocar op.';
+        operadoras = Object.entries(ops5km).filter(([op]) => !ehVivo(op)).map(([op, tecs]) => op + ' (' + [...tecs].join('/') + ')').join(', ');
+        status = 'trocar_op';
+      }
+      return { v, d5, d20, sugestao, operadoras, status };
+    });
+
+    const totalOk = resultados.filter(r => r.status === 'ok').length;
+    const total4g = resultados.filter(r => r.status === 'trocar_4g').length;
+    const totalReap = resultados.filter(r => r.status === 'reaproveitar_3g').length;
+    const totalOp = resultados.filter(r => r.status === 'trocar_op').length;
+    const totalSem = resultados.filter(r => r.status === 'sem_cobertura').length;
+
+    document.getElementById('kpi-grid').innerHTML =
+      '<div class="kpi"><span>✅ Vivo 3G</span><strong style="color:var(--success)">' + totalOk + '</strong></div>' +
+      '<div class="kpi"><span>📶 Trocar 4G</span><strong style="color:var(--warn)">' + total4g + '</strong></div>' +
+      '<div class="kpi"><span>🤝 Reaprov. 3G</span><strong style="color:#ab47bc">' + totalReap + '</strong></div>' +
+      '<div class="kpi"><span>🔄 Trocar op.</span><strong style="color:#ff9800">' + totalOp + '</strong></div>' +
+      '<div class="kpi"><span>❌ Sem cobertura</span><strong style="color:var(--danger)">' + totalSem + '</strong></div>';
+
+    renderTabelaOperadoras();
+    renderAnaliseFrota(resultados);
+
+    if (!map) initMap();
+    plotAllVehicles(resultados);
+
+    if (veiculos.length > 0) showVehicleDetails(0, resultados[0]);
+  }
+
+  function renderTabelaOperadoras() {
+    const dentro20 = [];
+    veiculos.forEach(v => {
+      antenas.forEach(a => {
+        const d = haversine(v.lat, v.lng, a.lat, a.lng);
+        if (d <= 20) dentro20.push({ ...a, distanciaKm: d });
+      });
+    });
+    const agrupado = {};
+    dentro20.forEach(a => {
+      if (!agrupado[a.operadora]) agrupado[a.operadora] = { total: 0, dentro5: 0, tecs: new Set() };
+      agrupado[a.operadora].total++;
+      agrupado[a.operadora].tecs.add(a.tecnologia);
+      if (a.distanciaKm <= 5) agrupado[a.operadora].dentro5++;
+    });
+
+    const html = Object.entries(agrupado).sort((a, b) => b[1].total - a[1].total).map(([op, info]) =>
+      '<tr><td>' + op + '</td><td>' + [...info.tecs].join(' / ') + '</td><td>' + info.total + '</td><td>' + info.dentro5 + '</td></tr>'
+    ).join('');
+
+    document.getElementById('tabela-operadoras').innerHTML =
+      '<table><thead><tr><th>Operadora</th><th>Tecnologias</th><th>Total 20 km</th><th>Raio 5 km</th></tr></thead><tbody>' +
+      (html || '<tr><td colspan="4" style="text-align:center;color:#8b949e;">Nenhuma antena no raio</td></tr>') +
+      '</tbody></table>';
+  }
+
+  function renderAnaliseFrota(resultados) {
+    const chips = {};
+    resultados.filter(r => r.status === 'reaproveitar_3g' || r.status === 'trocar_op').forEach(r => {
+      r.operadoras.split(',').forEach(part => {
+        const m = part.trim().match(/^([^(]+)/);
+        if (m) { const op = m[1].trim(); if (op && !ehVivo(op)) chips[op] = (chips[op] || 0) + 1; }
+      });
+    });
+    const totalChips = Object.values(chips).reduce((s, v) => s + v, 0);
+
+    let html = '';
+    if (totalChips > 0) {
+      html += '<div style="margin-bottom:10px;"><strong>📦 Chips necessários: ' + totalChips + '</strong><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">' +
+        Object.entries(chips).sort((a, b) => b[1] - a[1]).map(([op, qtd]) =>
+          '<span class="badge badge-info">' + op + ': ' + qtd + ' chip' + (qtd > 1 ? 's' : '') + '</span>'
+        ).join('') + '</div></div>';
+    }
+
+    html += '<table><thead><tr><th>Veículo</th><th>Placa</th><th>5km</th><th>20km</th><th>Operadoras 5km</th><th>Recomendação</th></tr></thead><tbody>' +
+      resultados.map(({ v, d5, d20, sugestao, operadoras, status }) => {
+        const badgeClass = status === 'ok' ? 'badge-ok' : (status === 'trocar_4g' ? 'badge-warn' : (status === 'reaproveitar_3g' ? 'badge-info' : (status === 'trocar_op' ? 'badge-warn' : 'badge-danger')));
+        return '<tr onclick="window._selectVehicle(' + veiculos.indexOf(v) + ')" style="cursor:pointer;">' +
+          '<td><strong>' + v.nome + '</strong></td>' +
+          '<td>' + (v.placa || '—') + '</td>' +
+          '<td>' + d5 + '</td>' +
+          '<td>' + d20 + '</td>' +
+          '<td style="font-size:10px;color:#8b949e;">' + operadoras + '</td>' +
+          '<td><span class="badge ' + badgeClass + '">' + sugestao + '</span></td></tr>';
+      }).join('') + '</tbody></table>';
+
+    document.getElementById('analise-frota').innerHTML = html;
+  }
+
+  window._selectVehicle = function(idx) {
+    const v = veiculos[idx];
+    if (!v) return;
+    const res = antenas.map(a => ({ ...a, distanciaKm: haversine(v.lat, v.lng, a.lat, a.lng) }));
+    const dentro5 = res.filter(a => a.distanciaKm <= 5);
+    const dentro20 = res.filter(a => a.distanciaKm <= 20);
+    showVehicleDetails(idx, { v, d5: dentro5.length, d20: dentro20.length });
+    showViabilidade(dentro20, dentro5, v);
+    plotQuery(v.lat, v.lng, dentro20, v);
+  };
+
+  function showVehicleDetails(idx, r) {
+    if (!r) return;
+    const v = r.v;
+    document.getElementById('veic-detalhes').innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">' +
+      '<div><strong>Veículo:</strong> ' + v.nome + '</div>' +
+      '<div><strong>Placa:</strong> ' + (v.placa || '—') + '</div>' +
+      '<div><strong>Coordenadas:</strong> ' + v.lat.toFixed(4) + ', ' + v.lng.toFixed(4) + '</div>' +
+      '<div><strong>Online:</strong> ' + (v.online ? '🟢 Sim' : '🔴 Não') + '</div>' +
+      '</div>';
+  }
+
+  function showViabilidade(dentro20, dentro5, veiculo) {
+    const hasVivo3g = dentro5.some(a => ehVivo(a.operadora) && eh3g(a.tecnologia));
+    const hasVivo4g = dentro5.some(a => ehVivo(a.operadora) && eh4g(a.tecnologia));
+    const temOutra3g = dentro5.some(a => !ehVivo(a.operadora) && eh3g(a.tecnologia));
+    const viv20 = dentro20.filter(a => ehVivo(a.operadora));
+    const outras20 = dentro20.filter(a => !ehVivo(a.operadora));
+
+    let recomendacao = { cor: '#3fb950', texto: '✅ Vivo 3G', acao: 'Cobertura Vivo 3G disponível no raio de 5 km.' };
+    if (!hasVivo3g && !hasVivo4g && temOutra3g) {
+      recomendacao = { cor: '#ab47bc', texto: '🤝 Reaproveitar 3G', acao: 'Outra operadora cobre com 3G. Verificar custo de chip.' };
+    } else if (!hasVivo3g && hasVivo4g) {
+      recomendacao = { cor: '#d29922', texto: '📶 Trocar para 4G', acao: 'Vivo não disponível em 3G, mas 4G sim. Equipamento precisa ser compatível.' };
+    } else if (!hasVivo3g && !temOutra3g) {
+      const melhorOutra = Object.entries(
+        outras20.reduce((acc, a) => { if (!ehVivo(a.operadora)) { if (!acc[a.operadora]) acc[a.operadora] = new Set(); acc[a.operadora].add(a.tecnologia); } return acc; }, {})
+      ).sort((a, b) => b[1].size - a[1].size)[0];
+      if (melhorOutra) {
+        recomendacao = { cor: '#d29922', texto: '🔄 Trocar operadora', acao: 'Vivo sem cobertura. ' + melhorOutra[0] + ' disponível a 20 km — avaliar troca de SIM/contrato.' };
+      } else {
+        recomendacao = { cor: '#f85149', texto: '❌ Sem cobertura', acao: 'Nenhuma operadora com cobertura na região.' };
+      }
+    }
+
+    document.getElementById('viabilidade').innerHTML =
+      '<div style="margin-bottom:8px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + recomendacao.cor + ';margin-right:6px;"></span><strong>' + recomendacao.texto + '</strong></div>' +
+      '<p style="font-size:11px;color:#8b949e;line-height:1.5;">' + recomendacao.acao + '</p>' +
+      '<div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;">' +
+      '<div>📡 Vivo 3G: ' + viv20.filter(a => eh3g(a.tecnologia)).length + ' ant.</div>' +
+      '<div>📡 Vivo 4G: ' + viv20.filter(a => eh4g(a.tecnologia)).length + ' ant.' +
+      '<div>📡 Outras: ' + outras20.length + ' ant.</div></div>';
+  }
+
+  function initMap() {
+    const container = document.getElementById('map-container');
+    if (!container) return;
+    map = L.map(container, { zoomControl: true }).setView([-15.8, -47.9], 4);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19, attribution: '&copy; <a href="https://carto.com/">CARTO</a>'
+    }).addTo(map);
+    markersLayer = L.layerGroup().addTo(map);
+    setTimeout(function() { if (map) map.invalidateSize(); }, 200);
+  }
+
+  function plotAllVehicles(resultados) {
+    if (!markersLayer) return;
+    markersLayer.clearLayers();
+    resultados.forEach(function(r, i) {
+      const v = r.v;
+      const color = r.status === 'ok' ? '#3fb950' : (r.status === 'trocar_4g' ? '#d29922' : (r.status === 'reaproveitar_3g' ? '#ab47bc' : (r.status === 'trocar_op' ? '#ff9800' : '#f85149')));
+      const marker = L.circleMarker([v.lat, v.lng], { radius: 8, fillColor: color, color: '#fff', weight: 1.5, fillOpacity: 0.8 });
+      marker.bindPopup('<b>' + v.nome + '</b><br>' + (v.placa || '') + '<br>' + r.sugestao);
+      marker.on('click', function() { window._selectVehicle(i); });
+      markersLayer.addLayer(marker);
+    });
+    if (veiculos.length > 0) {
+      const avgLat = veiculos.reduce(function(s, v) { return s + v.lat; }, 0) / veiculos.length;
+      const avgLng = veiculos.reduce(function(s, v) { return s + v.lng; }, 0) / veiculos.length;
+      map.setView([avgLat, avgLng], 5);
+    }
+    setTimeout(function() { if (map) map.invalidateSize(); }, 200);
+  }
+
+  function plotQuery(lat, lng, dentro20, veiculo) {
+    if (!map) initMap();
+    if (!markersLayer) return;
+    markersLayer.clearLayers();
+    if (centerMarker) map.removeLayer(centerMarker);
+    centerMarker = L.marker([lat, lng], {
+      icon: L.divIcon({ className: '', html: '<div style="background:#58a6ff;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fff;font-size:12px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.4);">📍</div>', iconSize: [24, 24], iconAnchor: [12, 12] })
+    }).addTo(map);
+    if (veiculo) centerMarker.bindPopup('<b>' + veiculo.nome + '</b>');
+    if (circle5) map.removeLayer(circle5);
+    if (circle20) map.removeLayer(circle20);
+    circle5 = L.circle([lat, lng], { radius: 5000, color: '#3fb950', fillColor: '#3fb950', fillOpacity: 0.05, weight: 1 }).addTo(map);
+    circle20 = L.circle([lat, lng], { radius: 20000, color: '#d29922', fillColor: '#d29922', fillOpacity: 0.03, weight: 1 }).addTo(map);
+    dentro20.forEach(function(a) {
+      const color = ehVivo(a.operadora) ? '#58a6ff' : '#d29922';
+      const m = L.circleMarker([a.lat, a.lng], { radius: 5, fillColor: color, color: '#fff', weight: 1, fillOpacity: 0.7 });
+      m.bindPopup('<b>' + a.nome + '</b><br>' + a.operadora + ' — ' + a.tecnologia + '<br>📏 ' + a.distanciaKm.toFixed(2) + ' km');
+      markersLayer.addLayer(m);
+    });
+    map.setView([lat, lng], 11);
+    setTimeout(function() { if (map) map.invalidateSize(); }, 200);
+  }
+
+  function init(api) {
+    try {
+      hideLoading();
+      renderApp();
+      updateCounts();
+    } catch (e) {
+      console.error('Erro ao renderizar:', e);
+    }
+
+    if (api) {
+      document.getElementById('geotab-status').innerHTML = '⏳ Carregando dispositivos do Geotab...';
+
+      var timeoutTimer = setTimeout(function() {
+        document.getElementById('geotab-status').innerHTML = '⚠️ A requisição ao Geotab está demorando. Verifique as permissões do add-in.';
+      }, 15000);
+
+      api.call('Get', {
+        typeName: 'DeviceStatusInfo',
+        search: {
+          fromDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+          toDate: new Date().toISOString()
+        }
+      }, function(result) {
+        clearTimeout(timeoutTimer);
+        if (result && result.length > 0) {
+          veiculos = result
+            .filter(function(v) { return v.Latitude && v.Longitude; })
+            .map(function(v) {
+              var dias = v.DateTime ? Math.floor((Date.now() - new Date(v.DateTime)) / 86400000) : -1;
+              return {
+                nome: v.Device ? v.Device.name : '',
+                placa: v.Device ? v.Device.licensePlate : '',
+                lat: Number(v.Latitude),
+                lng: Number(v.Longitude),
+                ultimoGps: v.DateTime ? new Date(v.DateTime) : null,
+                diasSemSinal: dias,
+                online: v.IsDeviceCommunicating
+              };
+            });
+          document.getElementById('geotab-status').innerHTML = '✅ ' + veiculos.length + ' veículos carregados do Geotab';
+          updateCounts();
+          renderAnalysis();
+        } else {
+          document.getElementById('geotab-status').innerHTML = '⚠️ Nenhum dispositivo encontrado no Geotab';
+        }
+      }, function(err) {
+        clearTimeout(timeoutTimer);
+        var msg = err && err.message ? err.message : 'erro desconhecido';
+        document.getElementById('geotab-status').innerHTML = '❌ Erro Geotab: ' + msg;
+      });
+    } else {
+      document.getElementById('geotab-status').innerHTML = '🔌 Add-in não conectado ao Geotab';
+    }
+  }
+
+  geotab.addin.operadoras = function() {
+    return {
+      initialize: function(api, state, callback) {
+        init(api);
+        if (callback) callback();
+      },
+      focus: function() {
+        if (map) setTimeout(function() { map.invalidateSize(); }, 200);
+      },
+      blur: function() {}
+    };
+  };
+})();
+</script>
+</body>
+</html>

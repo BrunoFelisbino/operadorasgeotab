@@ -1,0 +1,14 @@
+{
+  "name": "Operadoras",
+  "short_name": "Operadoras",
+  "description": "Add-in Geotab para análise de cobertura de operadoras",
+  "start_url": "https://brunofelisbino.github.io/operadorasgeotab/",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#58a6ff",
+  "icons": [{
+    "src": "icon.svg",
+    "sizes": "any",
+    "type": "image/svg+xml"
+  }]
+}
