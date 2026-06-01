@@ -177,6 +177,10 @@
     const app = document.getElementById('app');
     if (!app) return;
     app.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <h2 style="margin:0;font-size:15px;color:var(--accent);">📡 Análise de Cobertura</h2>
+        <span style="font-size:10px;color:var(--text-dim);">Operadoras Geotab</span>
+      </div>
       <div class="toolbar">
         <label>📄 Antenas:
           <input type="file" id="ant-upload" accept=".xlsx,.xls,.csv" style="display:none"/>
@@ -516,12 +520,14 @@
   function initMap() {
     const container = document.getElementById('map-container');
     if (!container) return;
+    container.style.height = '400px';
+    container.style.width = '100%';
     map = L.map(container, { zoomControl: true }).setView([-15.8, -47.9], 4);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19, attribution: '&copy; <a href="https://carto.com/">CARTO</a>'
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; <a href="https://openstreetmap.org">OSM</a>'
     }).addTo(map);
     markersLayer = L.layerGroup().addTo(map);
-    setTimeout(function() { if (map) map.invalidateSize(); }, 200);
+    setTimeout(function() { if (map) map.invalidateSize(); }, 500);
   }
 
   function plotAllVehicles(resultados) {
