@@ -534,6 +534,8 @@
   }
 
   function init(api) {
+    console.log('API:', api);
+    if (!api) alert('API GEOTAB NÃO DISPONÍVEL');
     try {
       hideLoading();
       renderApp();
@@ -613,6 +615,8 @@
   geotab.addin.operadoras = function() {
     return {
       initialize: function(api, state, callback) {
+        alert('INITIALIZE CHAMADO');
+        console.log('initialize api:', api);
         init(api);
         if (callback) callback();
       },
