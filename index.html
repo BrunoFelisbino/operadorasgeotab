@@ -11,9 +11,10 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <style>
+  <style id="app-styles">
+    @keyframes spin { to { transform: rotate(360deg); } }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
+    :host,:root {
       --bg: #0a0e14;
       --card: rgba(16,22,30,0.92);
       --text: #e6edf3;
@@ -36,10 +37,11 @@
       --radius: 10px;
       --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.2);
     }
-    body {
+    :host {
+      display: block;
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: var(--bg) !important;
-      color: var(--text) !important;
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
       padding: 14px;
     }
@@ -116,35 +118,14 @@
     .flex-1 { flex: 1; min-width: 200px; }
     .leaflet-container { background: #0d1117 !important; }
     @media (max-width: 768px) {
-      body { padding: 8px; }
+      :host { padding: 8px; }
       .toolbar { flex-direction: column; }
       .toolbar select, .toolbar input { width: 100%; }
     }
   </style>
 </head>
 <body>
-<script>
-(function(){
-  var bg = '#0d1117';
-  document.documentElement.style.cssText = 'background:'+bg+'!important';
-  document.body.style.cssText = 'background:'+bg+'!important;color:#e6edf3;font-family:Segoe UI,system-ui,sans-serif;min-height:100vh;padding:12px;';
-  var s = document.createElement('style');
-  s.textContent = 'html,body{background:'+bg+'!important}';
-  document.head.appendChild(s);
-})();
-</script>
-
-<div id="app">
-  <div id="loading" style="display:flex;align-items:center;justify-content:center;padding:40px;color:#8b949e;font-size:13px;gap:10px;">
-    <div class="spinner" style="width:24px;height:24px;border-radius:50%;border:3px solid #30363d;border-top-color:#58a6ff;animation:spin 0.8s linear infinite;"></div>
-    <span>Conectando ao Geotab...</span>
-  </div>
-</div>
-
-<style>
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-hidden { display: none !important; }
-</style>
+<div id="app"></div>
 
 <script>
 (function() {
@@ -173,6 +154,12 @@
   let antenas = [];
   let veiculos = [];
 
+  var $root = null;
+  function $(id) {
+    if (id === 'app' || id === 'loading') return document.getElementById(id);
+    return $root ? $root.getElementById(id) : document.getElementById(id);
+  }
+
   function saveAntenas() {
     try { localStorage.setItem('operadoras_antenas', JSON.stringify(antenas)); } catch (e) {}
   }
@@ -184,15 +171,15 @@
     return false;
   }
 
-  function hideLoading() {
-    const el = document.getElementById('loading');
-    if (el) el.classList.add('loading-hidden');
-  }
+  function hideLoading() {}
 
   function renderApp() {
-    const app = document.getElementById('app');
+    const app = $('app');
     if (!app) return;
-    app.innerHTML = `
+    $root = app.attachShadow({ mode: 'open' });
+    var appCss = document.getElementById('app-styles').outerHTML;
+    var leafletCss = '<style>@import url("https://unpkg.com/leaflet@1.9.4/dist/leaflet.css");</style>';
+    $root.innerHTML = leafletCss + appCss + `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <h2 style="margin:0;font-size:15px;color:var(--accent);">📡 Análise de Cobertura</h2>
         <span style="font-size:10px;color:var(--text-dim);">Operadoras Geotab</span>
@@ -249,14 +236,14 @@
       </div>
     `;
 
-    document.getElementById('btn-ant-upload').addEventListener('click', () => {
-      document.getElementById('ant-upload').click();
+    $('btn-ant-upload').addEventListener('click', () => {
+      $('ant-upload').click();
     });
-    document.getElementById('ant-upload').addEventListener('change', (e) => {
+    $('ant-upload').addEventListener('change', (e) => {
       uploadAntenas(e);
     });
-    document.getElementById('btn-ant-backend').addEventListener('click', loadAntBackend);
-    document.getElementById('btn-clear-cache').addEventListener('click', function() {
+    $('btn-ant-backend').addEventListener('click', loadAntBackend);
+    $('btn-clear-cache').addEventListener('click', function() {
       localStorage.removeItem('operadoras_antenas');
       antenas = [];
       updateCounts();
@@ -265,7 +252,7 @@
   }
 
   function setStatus(msg, type) {
-    const el = document.getElementById('status-msg');
+    const el = $('status-msg');
     if (!el) return;
     el.hidden = false;
     el.className = 'status-msg ' + (type || '');
@@ -273,8 +260,8 @@
   }
 
   function updateCounts() {
-    const antEl = document.getElementById('ant-count');
-    const veicEl = document.getElementById('veic-count');
+    const antEl = $('ant-count');
+    const veicEl = $('veic-count');
     if (antEl) antEl.innerHTML = '📡 Antenas: ' + antenas.length;
     if (veicEl) veicEl.innerHTML = '🚛 Veículos: ' + veiculos.length;
   }
@@ -307,7 +294,7 @@
   function uploadAntenas(e) {
     const file = e.target.files[0];
     if (!file) return;
-    const el = document.getElementById('ant-filename');
+    const el = $('ant-filename');
     el.textContent = '⏳ ' + file.name + '...';
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -357,10 +344,10 @@
   }
 
   function renderAnalysis() {
-    document.getElementById('kpi-area').style.display = 'block';
+    $('kpi-area').style.display = 'block';
     if (antenas.length === 0) return;
     if (veiculos.length === 0) {
-      document.getElementById('analise-frota').innerHTML = '<div style="padding:20px;text-align:center;color:#8b949e;">Nenhum veículo encontrado no Geotab.</div>';
+      $('analise-frota').innerHTML = '<div style="padding:20px;text-align:center;color:#8b949e;">Nenhum veículo encontrado no Geotab.</div>';
       return;
     }
 
@@ -403,7 +390,7 @@
     const totalOp = resultados.filter(r => r.status === 'trocar_op').length;
     const totalSem = resultados.filter(r => r.status === 'sem_cobertura').length;
 
-    document.getElementById('kpi-grid').innerHTML =
+    $('kpi-grid').innerHTML =
       '<div class="kpi"><span>✅ Vivo 3G</span><strong style="color:var(--success)">' + totalOk + '</strong></div>' +
       '<div class="kpi"><span>📶 Trocar 4G</span><strong style="color:var(--warn)">' + total4g + '</strong></div>' +
       '<div class="kpi"><span>🤝 Reaprov. 3G</span><strong style="color:#ab47bc">' + totalReap + '</strong></div>' +
@@ -439,7 +426,7 @@
       '<tr><td>' + op + '</td><td>' + [...info.tecs].join(' / ') + '</td><td>' + info.total + '</td><td>' + info.dentro5 + '</td></tr>'
     ).join('');
 
-    document.getElementById('tabela-operadoras').innerHTML =
+    $('tabela-operadoras').innerHTML =
       '<table><thead><tr><th>Operadora</th><th>Tecnologias</th><th>Total 20 km</th><th>Raio 5 km</th></tr></thead><tbody>' +
       (html || '<tr><td colspan="4" style="text-align:center;color:#8b949e;">Nenhuma antena no raio</td></tr>') +
       '</tbody></table>';
@@ -475,7 +462,7 @@
           '<td><span class="badge ' + badgeClass + '">' + sugestao + '</span></td></tr>';
       }).join('') + '</tbody></table>';
 
-    document.getElementById('analise-frota').innerHTML = html;
+    $('analise-frota').innerHTML = html;
   }
 
   window._selectVehicle = function(idx) {
@@ -492,7 +479,7 @@
   function showVehicleDetails(idx, r) {
     if (!r) return;
     const v = r.v;
-    document.getElementById('veic-detalhes').innerHTML =
+    $('veic-detalhes').innerHTML =
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">' +
       '<div><strong>Veículo:</strong> ' + v.nome + '</div>' +
       '<div><strong>Placa:</strong> ' + (v.placa || '—') + '</div>' +
@@ -524,7 +511,7 @@
       }
     }
 
-    document.getElementById('viabilidade').innerHTML =
+    $('viabilidade').innerHTML =
       '<div style="margin-bottom:8px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + recomendacao.cor + ';margin-right:6px;"></span><strong>' + recomendacao.texto + '</strong></div>' +
       '<p style="font-size:11px;color:#8b949e;line-height:1.5;">' + recomendacao.acao + '</p>' +
       '<div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;">' +
@@ -534,7 +521,7 @@
   }
 
   function initMap() {
-    const container = document.getElementById('map-container');
+    const container = $('map-container');
     if (!container) return;
     container.style.height = '400px';
     container.style.width = '100%';
@@ -600,17 +587,17 @@
     }
 
     if (api) {
-      document.getElementById('geotab-status').innerHTML = '⏳ Carregando dispositivos do Geotab...';
+      $('geotab-status').innerHTML = '⏳ Carregando dispositivos do Geotab...';
 
       var timeoutTimer = setTimeout(function() {
-        document.getElementById('geotab-status').innerHTML = '⚠️ A requisição ao Geotab está demorando. Verifique as permissões do add-in.';
+        $('geotab-status').innerHTML = '⚠️ A requisição ao Geotab está demorando. Verifique as permissões do add-in.';
       }, 15000);
 
       function processDevices(deviceList) {
         veiculos = deviceList;
         console.log('Veiculos processados:', veiculos.length);
         if (veiculos.length > 0) console.log('Primeiro veiculo:', veiculos[0]);
-        document.getElementById('geotab-status').innerHTML = '✅ ' + veiculos.length + ' veículos carregados do Geotab';
+        $('geotab-status').innerHTML = '✅ ' + veiculos.length + ' veículos carregados do Geotab';
         updateCounts();
         renderAnalysis();
       }
@@ -642,14 +629,14 @@
                 };
               }));
           } else {
-            document.getElementById('geotab-status').innerHTML = '⚠️ Nenhum veículo encontrado no Geotab';
+            $('geotab-status').innerHTML = '⚠️ Nenhum veículo encontrado no Geotab';
           }
         }, function(err) {
           clearTimeout(timeoutTimer);
-          document.getElementById('geotab-status').innerHTML = '❌ Erro Geotab: ' + (err && err.message ? err.message : 'erro');
+          $('geotab-status').innerHTML = '❌ Erro Geotab: ' + (err && err.message ? err.message : 'erro');
         });
       }, function(errDev) {
-        document.getElementById('geotab-status').innerHTML = '⚠️ Dispositivos não carregados, tentando só GPS...';
+        $('geotab-status').innerHTML = '⚠️ Dispositivos não carregados, tentando só GPS...';
         api.call('Get', { typeName: 'DeviceStatusInfo' }, function(result) {
           clearTimeout(timeoutTimer);
           if (result && result.length > 0) {
@@ -667,15 +654,15 @@
               };
             }));
           } else {
-            document.getElementById('geotab-status').innerHTML = '⚠️ Nenhum veículo encontrado no Geotab';
+            $('geotab-status').innerHTML = '⚠️ Nenhum veículo encontrado no Geotab';
           }
         }, function(err2) {
           clearTimeout(timeoutTimer);
-          document.getElementById('geotab-status').innerHTML = '❌ Erro Geotab: ' + (err2 && err2.message ? err2.message : 'erro');
+          $('geotab-status').innerHTML = '❌ Erro Geotab: ' + (err2 && err2.message ? err2.message : 'erro');
         });
       });
     } else {
-      document.getElementById('geotab-status').innerHTML = '🔌 Add-in não conectado ao Geotab';
+      $('geotab-status').innerHTML = '🔌 Add-in não conectado ao Geotab';
     }
   }
 
