@@ -10,8 +10,11 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <style id="app-styles">
+   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div id="app"><div style="display:flex;align-items:center;justify-content:center;padding:40px;color:#8b949e;font-size:13px;gap:10px;"><div style="width:24px;height:24px;border-radius:50%;border:3px solid #30363d;border-top-color:#58a6ff;animation:spin 0.8s linear infinite;"></div><span>Conectando ao Geotab...</span></div></div>
+<style id="app-styles">
     @keyframes spin { to { transform: rotate(360deg); } }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :host,:root {
@@ -123,9 +126,6 @@
       .toolbar select, .toolbar input { width: 100%; }
     }
   </style>
-</head>
-<body>
-<div id="app"></div>
 
 <script>
 (function() {
@@ -176,8 +176,10 @@
   function renderApp() {
     const app = $('app');
     if (!app) return;
-    $root = app.attachShadow({ mode: 'open' });
-    var appCss = document.getElementById('app-styles').outerHTML;
+    if (app.shadowRoot) app.shadowRoot.innerHTML = '';
+    $root = app.shadowRoot || app.attachShadow({ mode: 'open' });
+    var styleEl = document.getElementById('app-styles');
+    var appCss = styleEl ? styleEl.outerHTML : '<style>:host{display:block;background:#0a0e14;color:#e6edf3;font-family:Segoe UI,system-ui,sans-serif;padding:14px;min-height:100vh}</style>';
     var leafletCss = '<style>@import url("https://unpkg.com/leaflet@1.9.4/dist/leaflet.css");</style>';
     $root.innerHTML = leafletCss + appCss + `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
@@ -584,6 +586,9 @@
       updateCounts();
     } catch (e) {
       console.error('Erro ao renderizar:', e);
+      var errDiv = document.getElementById('app');
+      if (errDiv) errDiv.innerHTML = '<div style="padding:20px;color:#f85149;font-family:sans-serif;font-size:13px;">❌ Erro ao carregar add-in: ' + e.message + '<br><small style="color:#8b949e;">Verifique o console (F12) para detalhes.</small></div>';
+      return;
     }
 
     if (api) {
@@ -670,7 +675,7 @@
     return {
       initialize: function(api, state, callback) {
         console.log('initialize chamado, api:', api);
-        init(api);
+        try { init(api); } catch (e) { console.error(e); }
         if (callback) callback();
       },
       focus: function() {
