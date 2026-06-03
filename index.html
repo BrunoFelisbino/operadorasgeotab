@@ -7,6 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Operadoras — Geotab Add-In</title>
+  <style>html, body { margin: 0; padding: 0; background: #0a0e14; color: #e6edf3; font-family: 'Segoe UI', system-ui, sans-serif; }</style>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -17,7 +18,7 @@
 <style id="app-styles">
     @keyframes spin { to { transform: rotate(360deg); } }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :host,:root {
+    :host, :root, #app {
       --bg: #0a0e14;
       --card: rgba(16,22,30,0.92);
       --text: #e6edf3;
@@ -40,7 +41,7 @@
       --radius: 10px;
       --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.2);
     }
-    :host {
+    body, #app {
       display: block;
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       background: var(--bg);
@@ -121,7 +122,7 @@
     .flex-1 { flex: 1; min-width: 200px; }
     .leaflet-container { background: #0d1117 !important; }
     @media (max-width: 768px) {
-      :host { padding: 8px; }
+      body, #app { padding: 8px; }
       .toolbar { flex-direction: column; }
       .toolbar select, .toolbar input { width: 100%; }
     }
@@ -154,10 +155,8 @@
   let antenas = [];
   let veiculos = [];
 
-  var $root = null;
   function $(id) {
-    if (id === 'app' || id === 'loading') return document.getElementById(id);
-    return $root ? $root.getElementById(id) : document.getElementById(id);
+    return document.getElementById(id);
   }
 
   function saveAntenas() {
@@ -171,17 +170,15 @@
     return false;
   }
 
-  function hideLoading() {}
+  function hideLoading() {
+    var spinner = document.getElementById('app');
+    if (spinner) spinner.innerHTML = '';
+  }
 
   function renderApp() {
     const app = $('app');
     if (!app) return;
-    if (app.shadowRoot) app.shadowRoot.innerHTML = '';
-    $root = app.shadowRoot || app.attachShadow({ mode: 'open' });
-    var styleEl = document.getElementById('app-styles');
-    var appCss = styleEl ? styleEl.outerHTML : '<style>:host{display:block;background:#0a0e14;color:#e6edf3;font-family:Segoe UI,system-ui,sans-serif;padding:14px;min-height:100vh}</style>';
-    var leafletCss = '<style>@import url("https://unpkg.com/leaflet@1.9.4/dist/leaflet.css");</style>';
-    $root.innerHTML = leafletCss + appCss + `
+    app.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <h2 style="margin:0;font-size:15px;color:var(--accent);">📡 Análise de Cobertura</h2>
         <span style="font-size:10px;color:var(--text-dim);">Operadoras Geotab</span>
