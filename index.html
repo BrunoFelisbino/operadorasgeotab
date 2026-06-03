@@ -601,7 +601,8 @@
       }
 
       var deviceMap = {};
-      api.call('Get', { typeName: 'Device', search: { fromDate: new Date().toISOString() } }, function(devices) {
+      api.call('Get', { typeName: 'Device' }, function(allDevices) {
+        var devices = allDevices.filter(function(d) { return !d.isArchived; });
         devices.forEach(function(d) {
           deviceMap[d.id] = { name: d.name, licensePlate: d.licensePlate || d.name };
         });
