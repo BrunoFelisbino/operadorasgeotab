@@ -4,8 +4,8 @@
   "description": "Add-in Geotab para análise de cobertura de operadoras",
   "start_url": "https://brunofelisbino.github.io/operadorasgeotab/",
   "display": "standalone",
-  "background_color": "#0d1117",
-  "theme_color": "#58a6ff",
+  "background_color": "#0a0e14",
+  "theme_color": "#00d4ff",
   "icons": [{
     "src": "icon.svg",
     "sizes": "any",
