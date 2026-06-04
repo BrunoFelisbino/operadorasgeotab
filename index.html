@@ -826,24 +826,75 @@
     },function(){/* ignora erro de grupos */});
 
     // 2. Carrega dispositivos (excluindo arquivados)
-    api.call('Get',{typeName:'Device',
-      search:{
-        // Filtra apenas ativos na API quando possível
-        fromDate:'1986-01-01T00:00:00Z'  // devices ativos têm fromDate definido
-      }
-    },function(allDevices){
-      // Filtra arquivados: isArchived===true OU isActive===false OU serialNumber===''
+    api.call('Get',{typeName:'Device'},function(allDevices){
       allDevices.forEach(d=>{
-        const arquivado = d.isArchived===true || d.isActive===false || d.name===''||d.name==null;
-        if(!arquivado){
-          deviceMap[d.id]={
-            name:d.name||d.id,
-            licensePlate:d.licensePlate||d.name||d.id,
-            // groups é array de {id:...}
-            grupos:(d.groups||[]).map(g=>g.id)
-          };
-        }
+        if(d.isArchived||d.isActive===false||!d.name) return;
+        deviceMap[d.id]={
+          name:d.name||d.id,
+          licensePlate:d.licensePlate||d.name||d.id,
+          grupos:(d.groups||[]).map(g=>g.id)
+        };
       });
+
+      // 3. Carrega posições GPS
+      const limiteDias=90;
+      const corte=new Date(Date.now()-limiteDias*86400000);
+      api.call('Get',{typeName:'DeviceStatusInfo'},function(result){
+        clearTimeout(timeout);
+        if(!result||!result.length){
+          setGeotabStatus('Nenhum veículo encontrado','yellow'); return;
+        }
+        veiculos=result
+          .filter(v=>v.latitude!=null&&v.longitude!=null&&v.device&&deviceMap[v.device.id])
+          .filter(v=>v.dateTime&&new Date(v.dateTime)>corte)
+          .map(v=>{
+            const info=deviceMap[v.device.id];
+            const dias=v.dateTime?Math.floor((Date.now()-new Date(v.dateTime))/86400000):-1;
+            return{
+              nome:info.name,
+              placa:info.licensePlate,
+              lat:Number(v.latitude),
+              lng:Number(v.longitude),
+              ultimoGps:v.dateTime?new Date(v.dateTime):null,
+              diasSemSinal:dias,
+              online:!!v.isDeviceCommunicating,
+              grupos:info.grupos
+            };
+          });
+        veiculosFiltrados=[...veiculos];
+        setGeotabStatus(veiculos.length+' veículos ativos','green');
+        updateCounts();
+        renderAnalysis();
+      },function(err){
+        clearTimeout(timeout);
+        setGeotabStatus('Erro GPS: '+(err&&err.message?err.message:'erro'),'red');
+      });
+    },function(){
+      // Fallback: sem deviceMap — só GPS, filtra por data recente
+      setGeotabStatus('Sem lista de devices — carregando GPS...','yellow');
+      const corteFallback=new Date(Date.now()-90*86400000);
+      api.call('Get',{typeName:'DeviceStatusInfo'},function(result){
+        clearTimeout(timeout);
+        if(!result||!result.length){ setGeotabStatus('Nenhum veículo','yellow'); return; }
+        veiculos=result.filter(v=>v.latitude!=null&&v.longitude!=null)
+          .filter(v=>v.dateTime&&new Date(v.dateTime)>corteFallback)
+          .map(v=>({
+            nome:v.device?v.device.id:'',
+            placa:v.device?v.device.id:'',
+            lat:Number(v.latitude),lng:Number(v.longitude),
+            ultimoGps:v.dateTime?new Date(v.dateTime):null,
+            diasSemSinal:v.dateTime?Math.floor((Date.now()-new Date(v.dateTime))/86400000):-1,
+            online:!!v.isDeviceCommunicating,
+            grupos:[]
+          }));
+        veiculosFiltrados=[...veiculos];
+        setGeotabStatus(veiculos.length+' veículos (sem filtro de grupos)','yellow');
+        updateCounts(); renderAnalysis();
+      },function(err){
+        clearTimeout(timeout);
+        setGeotabStatus('Erro: '+(err&&err.message?err.message:'desconhecido'),'red');
+      });
+    });
 
       // 3. Carrega posições GPS
       api.call('Get',{typeName:'DeviceStatusInfo'},function(result){
