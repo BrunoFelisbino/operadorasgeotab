@@ -154,6 +154,10 @@
 
   let antenas = [];
   let veiculos = [];
+  let veiculosFiltrados = [];
+  let grupos = [];
+  let grupoSelecionado = '';
+  let filtroPlaca = '';
 
   function $(id) {
     return document.getElementById(id);
@@ -191,6 +195,8 @@
         </label>
         <button class="secondary" id="btn-ant-backend">☁️ Carregar do servidor</button>
         <button class="secondary" id="btn-clear-cache" style="font-size:11px;">🗑️ Limpar cache</button>
+        <select id="filtro-grupo" style="max-width:160px;"><option value="">Todos os grupos</option></select>
+        <input type="text" id="filtro-placa" placeholder="🔍 Filtrar por placa..." style="max-width:160px;" />
       </div>
 
       <div class="info-bar">
@@ -342,15 +348,28 @@
     }).filter(r => r[headers[0]]);
   }
 
+  function aplicarFiltros() {
+    grupoSelecionado = $('filtro-grupo').value;
+    filtroPlaca = $('filtro-placa').value.toLowerCase().trim();
+    veiculosFiltrados = veiculos.filter(function(v) {
+      if (grupoSelecionado && v.grupos.indexOf(grupoSelecionado) === -1) return false;
+      if (filtroPlaca && v.placa && v.placa.toLowerCase().indexOf(filtroPlaca) === -1 && v.nome && v.nome.toLowerCase().indexOf(filtroPlaca) === -1) return false;
+      return true;
+    });
+    renderAnalysis();
+  }
+
   function renderAnalysis() {
     $('kpi-area').style.display = 'block';
     if (antenas.length === 0) return;
-    if (veiculos.length === 0) {
-      $('analise-frota').innerHTML = '<div style="padding:20px;text-align:center;color:#8b949e;">Nenhum veículo encontrado no Geotab.</div>';
+    if (veiculosFiltrados.length === 0) {
+      $('analise-frota').innerHTML = '<div style="padding:20px;text-align:center;color:#8b949e;">Nenhum veículo encontrado' + (grupoSelecionado || filtroPlaca ? ' com os filtros atuais.' : ' no Geotab.') + '</div>';
+      $('kpi-grid').innerHTML = '';
+      if (map && markersLayer) markersLayer.clearLayers();
       return;
     }
 
-    const resultados = veiculos.map(v => {
+    const resultados = veiculosFiltrados.map(v => {
       const res = antenas.map(a => ({ ...a, distanciaKm: haversine(v.lat, v.lng, a.lat, a.lng) }));
       const d5 = res.filter(a => a.distanciaKm <= 5).length;
       const d20 = res.filter(a => a.distanciaKm <= 20).length;
@@ -402,12 +421,12 @@
     if (!map) initMap();
     plotAllVehicles(resultados);
 
-    if (veiculos.length > 0) showVehicleDetails(0, resultados[0]);
+    if (veiculosFiltrados.length > 0) showVehicleDetails(0, resultados[0]);
   }
 
   function renderTabelaOperadoras() {
     const dentro20 = [];
-    veiculos.forEach(v => {
+    veiculosFiltrados.forEach(v => {
       antenas.forEach(a => {
         const d = haversine(v.lat, v.lng, a.lat, a.lng);
         if (d <= 20) dentro20.push({ ...a, distanciaKm: d });
@@ -452,7 +471,7 @@
     html += '<table><thead><tr><th>Veículo</th><th>Placa</th><th>5km</th><th>20km</th><th>Operadoras 5km</th><th>Recomendação</th></tr></thead><tbody>' +
       resultados.map(({ v, d5, d20, sugestao, operadoras, status }) => {
         const badgeClass = status === 'ok' ? 'badge-ok' : (status === 'trocar_4g' ? 'badge-warn' : (status === 'reaproveitar_3g' ? 'badge-purple' : (status === 'trocar_op' ? 'badge-warn' : 'badge-danger')));
-        return '<tr onclick="window._selectVehicle(' + veiculos.indexOf(v) + ')" style="cursor:pointer;">' +
+        return '<tr onclick="window._selectVehicle(' + veiculosFiltrados.indexOf(v) + ')" style="cursor:pointer;">' +
           '<td><strong>' + v.nome + '</strong></td>' +
           '<td>' + (v.placa || '—') + '</td>' +
           '<td>' + d5 + '</td>' +
@@ -465,7 +484,7 @@
   }
 
   window._selectVehicle = function(idx) {
-    const v = veiculos[idx];
+    const v = veiculosFiltrados[idx];
     if (!v) return;
     const res = antenas.map(a => ({ ...a, distanciaKm: haversine(v.lat, v.lng, a.lat, a.lng) }));
     const dentro5 = res.filter(a => a.distanciaKm <= 5);
@@ -595,16 +614,28 @@
 
       function processDevices(deviceList) {
         veiculos = deviceList;
+        veiculosFiltrados = veiculos;
+        $('filtro-grupo').addEventListener('change', aplicarFiltros);
+        $('filtro-placa').addEventListener('input', aplicarFiltros);
         $('geotab-status').innerHTML = '✅ ' + veiculos.length + ' veículos carregados do Geotab';
         updateCounts();
         renderAnalysis();
       }
 
       var deviceMap = {};
+      var groupMap = {};
+      api.call('Get', { typeName: 'Group' }, function(allGroups) {
+        allGroups.forEach(function(g) { groupMap[g.id] = g.name || g.id; });
+        var groupOptions = [{ id: '', name: 'Todos os grupos' }];
+        allGroups.forEach(function(g) { if (g.name) groupOptions.push({ id: g.id, name: g.name }); });
+        var groupSelect = $('filtro-grupo');
+        groupSelect.innerHTML = groupOptions.map(function(o) { return '<option value="' + o.id + '">' + o.name + '</option>'; }).join('');
+      }, function() {});
       api.call('Get', { typeName: 'Device' }, function(allDevices) {
         var devices = allDevices.filter(function(d) { return !d.isArchived; });
         devices.forEach(function(d) {
-          deviceMap[d.id] = { name: d.name, licensePlate: d.licensePlate || d.name };
+          var grupoIds = d.groups ? d.groups.map(function(g) { return g.id; }) : [];
+          deviceMap[d.id] = { name: d.name, licensePlate: d.licensePlate || d.name, grupos: grupoIds };
         });
         api.call('Get', { typeName: 'DeviceStatusInfo' }, function(result) {
           clearTimeout(timeoutTimer);
@@ -624,7 +655,8 @@
                   lng: Number(v.longitude),
                   ultimoGps: v.dateTime ? new Date(v.dateTime) : null,
                   diasSemSinal: dias,
-                  online: v.isDeviceCommunicating
+                  online: v.isDeviceCommunicating,
+                  grupos: info ? info.grupos : []
                 };
               }));
           } else {
@@ -650,7 +682,8 @@
                 lng: Number(v.longitude),
                 ultimoGps: v.dateTime ? new Date(v.dateTime) : null,
                 diasSemSinal: dias,
-                online: v.isDeviceCommunicating
+                online: v.isDeviceCommunicating,
+                grupos: []
               };
             }));
           } else {
