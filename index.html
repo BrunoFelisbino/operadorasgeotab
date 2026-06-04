@@ -825,10 +825,12 @@
       }
     },function(){/* ignora erro de grupos */});
 
-    // 2. Carrega dispositivos (excluindo arquivados via filtro server-side)
+    // 2. Carrega dispositivos (excluindo arquivados)
     api.call('Get',{typeName:'Device',search:{isArchived:false}},function(allDevices){
       allDevices.forEach(d=>{
-        if(!d.name) return;
+        // Exclui: sem nome, desativados (isActive===false), ou com toDate no passado (arquivados)
+        if(!d.name||d.isActive===false) return;
+        if(d.toDate&&new Date(d.toDate)<new Date()) return;
         deviceMap[d.id]={
           name:d.name||d.id,
           licensePlate:d.licensePlate||d.name||d.id,
